@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "lab": "node socket-server/socket-lab.js",
-    "client": "node socket-server/socket-client.js"
+    "client": "node socket-server/socket-client.js",
+    "http": "node socket-server/http-basic.js"
   }
 }
