@@ -1,5 +1,9 @@
 {
   "name": "js-study",
   "type": "module",
-  "private": true
+  "private": true,
+  "scripts": {
+    "lab": "node socket-server/socket-lab.js",
+    "client": "node socket-server/socket-client.js"
+  }
 }
