@@ -4,3 +4,30 @@ body {
   margin: 2rem auto;
   padding: 0 1rem;
 }
+
+.list {
+  list-style: none;
+  padding: 0;
+}
+
+.item {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.item--done {
+  color: #999;
+  text-decoration: linethrough;
+}
+
+.status {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+.status--error {
+  color: #c00;
+}
