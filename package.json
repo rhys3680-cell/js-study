@@ -6,6 +6,7 @@
     "lab": "node socket-server/socket-lab.js",
     "client": "node socket-server/socket-client.js",
     "http": "node socket-server/http-basic.js",
-    "static": "node socket-server/static-server.js"
+    "static": "node socket-server/static-server.js",
+    "api": "node socket-server/api-server.js"
   }
 }
