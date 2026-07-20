@@ -29,9 +29,29 @@ function sendJson(res, status, data) {
 }
 
 // --- API ---
-function handleApi(req, res, url) {
+async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/todos") {
     return sendJson(res, 200, todos);
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/todos") {
+    const body = await readBody(req);
+
+    let data;
+    try {
+      data = JSON.parse(body);
+    } catch {
+      return sendJson(res, 400, { error: "잘못된 JSON입니다." });
+    }
+
+    if (typeof data.text !== "string" || data.text.trim() === "") {
+      return sendJson(res, 400, { error: "text가 필요합니다." });
+    }
+
+    const todo = { id: nextId++, text: data.text.trim(), done: false };
+    todos.push(todo);
+
+    return sendJson(res, 201, todo); // 201 created
   }
 
   // --- 프론트 상태 테스트용 ---
@@ -53,6 +73,14 @@ function handleApi(req, res, url) {
   }
 
   sendJson(res, 404, { error: "Not Found" });
+}
+
+async function readBody(req) {
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString();
 }
 
 // --- 정적 파일 ---
@@ -81,7 +109,7 @@ const server = http.createServer(async (req, res) => {
     console.log(`${req.method} ${url.pathname}`);
 
     if (url.pathname.startsWith("/api/")) {
-      handleApi(req, res, url);
+      await handleApi(req, res, url);
     } else {
       await handleStatic(req, res, url);
     }
