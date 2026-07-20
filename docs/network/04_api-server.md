@@ -76,3 +76,77 @@ Transfer-Encoding: chunked
 
 chunked는 스트리밍처럼 만들면서 동시에 보낼 때 필요하다.
 SSE 만들 때 다시 나온다.
+
+## 에러로 인한 서버 종료
+
+핸들러 안에서 예외가 나면 Node는 프로세스를 종료한다.
+요청 하나가 잘못되면 **서비스 전체가 내려간다.**
+
+그래서 최상위에 try/catch를 작성했다.
+
+```js
+const server = http.createServer(async (req, res) => {
+  try {
+    // 라우팅
+  } catch (err) {
+    console.error("처리 중 에러:", err);
+    if (!res.headersSent) {
+      sendJson(res, 500, { error: "Internal Server Error" });
+    }
+  }
+});
+```
+
+`headersSent` 확인이 필요한 이유 - 응답을 절반 보내다 에러가 나면 헤더는 이미 전송된 뒤여서 500을 보낼 수 없다.
+
+### 확인: 의도적으로 에러 발생시키기
+
+```js
+if (url.pathname === "/api/boom") {
+  throw new Error("의도적인 에러");
+}
+```
+
+```
+GET /api/boom
+처리 중 에러: Error: 의도적인 에러
+GET /api/todos          ← 서버가 살아서 다음 요청 처리
+```
+
+api endpoint에 따라 아래의 status를 반환하도록 작성되었다. (실제로도 반환)
+/api/todo은 404
+/api/boom(처리 중 에러)는 500
+
+### 잡지 못하는 부분
+
+```js
+if (url.pathname === "/api/boom-async") {
+  setTimeout(() => {
+    throw new Error("비동기 에러");
+  }, 100);
+  return;
+}
+```
+
+```
+curl: (56) Recv failure: Connection was reset
+```
+
+이유:
+
+```js
+try {
+  setTimeout(() => {
+    throw new Error("..."); // ← 100ms 뒤 실행
+  }, 100);
+  // try 블록 끝
+} catch (err) {
+  // 콜백이 실행 될 때 이 catch는 존재하지 않음
+}
+```
+
+`setTimeout`은 콜백을 **등록만 하고 즉시 반환한다.**
+100ms 뒤 콜백이 실행될 땐 다른 실행 컨텍스트다.
+
+try/catch는 **호출 스택을 따라 올라가며** 핸들러를 찾는데,
+콜백은 스택이 비워진 뒤 새로 시작하므로 catch에 도달하지 못한다.
