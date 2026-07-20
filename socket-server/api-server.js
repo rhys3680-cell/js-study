@@ -34,16 +34,22 @@ function handleApi(req, res, url) {
     return sendJson(res, 200, todos);
   }
 
-  // 일부러 에러 던지기
-  if (url.pathname === "/api/boom") {
-    throw new Error("의도적인 에러");
+  // --- 프론트 상태 테스트용 ---
+
+  // 느린 응답 → 로딩 상태 확인
+  if (url.pathname === "/api/slow") {
+    setTimeout(() => sendJson(res, 200, todos), 3000);
+    return;
   }
 
-  if (url.pathname === "/api/boom-async") {
-    setTimeout(() => {
-      throw new Error("비동기 에러");
-    }, 100);
-    return;
+  // 500 → 에러 상태 확인
+  if (url.pathname === "/api/fail") {
+    return sendJson(res, 500, { error: "Internal Server Error" });
+  }
+
+  // 빈 배열 → 빈 상태 확인
+  if (url.pathname === "/api/empty") {
+    return sendJson(res, 200, []);
   }
 
   sendJson(res, 404, { error: "Not Found" });
