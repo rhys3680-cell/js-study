@@ -63,6 +63,20 @@ async function handleApi(req, res, url) {
     return sendJson(res, 200, todo);
   }
 
+  if (match && req.method === "DELETE") {
+    const id = Number(match[1]);
+    const index = todos.findIndex((t) => t.id === id);
+
+    if (index === -1) {
+      return sendJson(res, 404, { error: "없는 항목입니다." });
+    }
+
+    todos.splice(index, 1);
+
+    res.writeHead(204);
+    res.end();
+  }
+
   if (req.method === "POST" && url.pathname === "/api/todos") {
     const body = await readBody(req);
 

@@ -54,6 +54,15 @@ async function toggleTodo(id, done) {
   return res.json();
 }
 
+async function deleteTodo(id) {
+  const res = await fetch(`/api/todos/${id}`, { method: "DELETE" });
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error ?? `요청 실패: ${res.status}`);
+  }
+}
+
 // --- 렌더 ---
 function render() {
   if (state.status === "loading") {
@@ -84,7 +93,8 @@ function todoHTML(todo) {
   return `
     <li class="item ${todo.done ? "item--done" : ""}" data-id="${todo.id}">
       <span>${todo.done ? "✓" : "○"}</span>
-      <span>${todo.text}</span>
+      <span class="item-text">${todo.text}</span>
+      <button class="item-delete" type="button">삭제</button>
     </li>
   `;
 }
@@ -124,9 +134,17 @@ root.addEventListener("click", async (e) => {
   if (!item) return;
 
   const id = Number(item.dataset.id);
-  const todo = state.todos.find((t) => t.id === id);
 
   try {
+    // 삭제 버튼 클릭 확인
+    if (e.target.closest(".item-delete")) {
+      await deleteTodo(id);
+      setState({ todos: state.todos.filter((t) => t.id !== id) });
+      return;
+    }
+
+    // 아니면 토글
+    const todo = state.todos.find((t) => t.id === id);
     const updated = await toggleTodo(id, !todo.done);
     setState({
       todos: state.todos.map((t) => (t.id === id ? updated : t)),
