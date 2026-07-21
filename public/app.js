@@ -121,9 +121,8 @@ form.addEventListener("submit", async (e) => {
   if (!text) return;
 
   try {
-    const todo = await createTodo(text);
+    await createTodo(text);
     input.value = "";
-    setState({ todos: [...state.todos, todo] });
   } catch (err) {
     alert(err.message); // TODO: 동작 확인 후 개선
   }
@@ -139,19 +138,40 @@ root.addEventListener("click", async (e) => {
     // 삭제 버튼 클릭 확인
     if (e.target.closest(".item-delete")) {
       await deleteTodo(id);
-      setState({ todos: state.todos.filter((t) => t.id !== id) });
       return;
     }
 
     // 아니면 토글
     const todo = state.todos.find((t) => t.id === id);
-    const updated = await toggleTodo(id, !todo.done);
-    setState({
-      todos: state.todos.map((t) => (t.id === id ? updated : t)),
-    });
+    await toggleTodo(id, !todo.done);
   } catch (err) {
     alert(err.message);
   }
 });
 
+function connectEvents() {
+  const source = new EventSource("/api/events");
+
+  source.addEventListener("todo-added", (e) => {
+    const todo = JSON.parse(e.data);
+
+    setState({ todos: [...state.todos, todo] });
+  });
+
+  source.addEventListener("todo-updated", (e) => {
+    const todo = JSON.parse(e.data);
+    setState({ todos: state.todos.map((t) => (t.id === todo.id ? todo : t)) });
+  });
+
+  source.addEventListener("todo-deleted", (e) => {
+    const { id } = JSON.parse(e.data);
+    setState({ todos: state.todos.filter((t) => t.id !== id) });
+  });
+
+  source.onerror = () => {
+    console.log("SSE 연결 끊김. 브라우저가 자동으로 재연결한다.");
+  };
+}
+
 init();
+connectEvents();

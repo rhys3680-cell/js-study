@@ -28,8 +28,40 @@ function sendJson(res, status, data) {
   res.end(body);
 }
 
+// --- SSE 연결 관리 ---
+const clients = new Set();
+
+function broadcast(event, data) {
+  const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+
+  for (const client of clients) {
+    client.write(message);
+  }
+}
+
 // --- API ---
 async function handleApi(req, res, url) {
+  if (req.method === "GET" && url.pathname === "/api/events") {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    });
+
+    res.write(":connected\n\n");
+
+    clients.add(res);
+    console.log(`SSE 연결. 현재 ${clients.size}개`);
+
+    // 연결이 끊기면 목록에서 제거
+    req.on("close", () => {
+      clients.delete(res);
+      console.log(`SSE 해제. 현재 ${clients.size}개`);
+    });
+
+    return;
+  }
+
   if (req.method === "GET" && url.pathname === "/api/todos") {
     return sendJson(res, 200, todos);
   }
@@ -59,6 +91,7 @@ async function handleApi(req, res, url) {
     }
 
     todo.done = data.done;
+    broadcast("todo-updated", todo);
 
     return sendJson(res, 200, todo);
   }
@@ -72,7 +105,7 @@ async function handleApi(req, res, url) {
     }
 
     todos.splice(index, 1);
-
+    broadcast("todo-deleted", { id });
     res.writeHead(204);
     res.end();
   }
@@ -93,6 +126,8 @@ async function handleApi(req, res, url) {
 
     const todo = { id: nextId++, text: data.text.trim(), done: false };
     todos.push(todo);
+
+    broadcast("todo-added", todo);
 
     return sendJson(res, 201, todo); // 201 created
   }
