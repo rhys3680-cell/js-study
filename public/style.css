@@ -31,3 +31,21 @@ body {
 .status--error {
   color: #c00;
 }
+
+#add-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+#add-input {
+  flex: 1;
+  padding: 10px;
+  font-size: 1rem;
+}
+
+#add-form button {
+  padding: 10px 16px;
+  font-size: 1rem;
+  cursor: pointer;
+}

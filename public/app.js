@@ -24,6 +24,21 @@ async function fetchTodos(path = "/api/todos") {
   return res.json();
 }
 
+async function createTodo(text) {
+  const res = await fetch("/api/todos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error ?? `요청 실패: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 // --- 렌더 ---
 function render() {
   if (state.status === "loading") {
@@ -70,5 +85,23 @@ async function init() {
     setState({ status: "error", error: err.message });
   }
 }
+
+const form = document.querySelector("#add-form");
+const input = document.querySelector("#add-input");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault(); // 페이지 새로고침 방지
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  try {
+    const todo = await createTodo(text);
+    input.value = "";
+    setState({ todos: [...state.todos, todo] });
+  } catch (err) {
+    alert(err.message); // TODO: 동작 확인 후 개선
+  }
+});
 
 init();
