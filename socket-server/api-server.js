@@ -1,6 +1,10 @@
 import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
+import crypto from "node:crypto";
+import { parseFrame, OPCODE, buildFrame } from "./ws-frame.js";
+
+const WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 const PUBLIC_DIR = path.resolve("public");
 
@@ -200,6 +204,82 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.on("error", (err) => console.error("서버 에러:", err.code));
+
+server.on("upgrade", (req, socket, head) => {
+  console.log(`UPGRADE ${req.url}`);
+
+  if (req.headers.upgrade?.toLowerCase() !== "websocket") {
+    socket.destroy();
+    return;
+  }
+
+  const key = req.headers["sec-websocket-key"];
+  if (!key) {
+    socket.destroy();
+    return;
+  }
+
+  const accept = crypto
+    .createHash("sha1")
+    .update(key + WS_GUID)
+    .digest("base64");
+
+  socket.write(
+    "HTTP/1.1 101 Switching Protocols\r\n" +
+      "Upgrade: websocket\r\n" +
+      "Connection: Upgrade\r\n" +
+      `Sec-WebSocket-Accept: ${accept}\r\n` +
+      "\r\n",
+  );
+
+  console.log("핸드셰이크 완료");
+
+  // 이 연결의 수신 버퍼. 프레임이 다 모일 때까지 쌓는다.
+  let buffer = head?.length ? Buffer.from(head) : Buffer.alloc(0);
+
+  socket.on("data", (chunk) => {
+    console.log("data 이벤트:", chunk.length, "바이트");
+    buffer = Buffer.concat([buffer, chunk]);
+
+    // 버퍼에서 읽을 수 있는 프레임을 전부 처리
+    while (true) {
+      const frame = parseFrame(buffer);
+      if (!frame) break;
+
+      buffer = buffer.subarray(frame.frameLength);
+
+      handleFrame(socket, frame);
+    }
+  });
+
+  socket.on("close", () => console.log("소켓 닫힘"));
+  socket.on("error", (err) => console.log("소켓 에러:", err.code));
+});
+
+function handleFrame(socket, frame) {
+  if (frame.opcode === OPCODE.TEXT) {
+    const text = frame.payload.toString();
+    console.log("텍스트:", text);
+
+    socket.write(buildFrame(`서버가 받음: ${text}`));
+    return;
+  }
+
+  if (frame.opcode === OPCODE.CLOSE) {
+    console.log("종료 요청");
+    socket.write(buildFrame("", OPCODE.CLOSE));
+    socket.end();
+    return;
+  }
+
+  if (frame.opcode === OPCODE.PING) {
+    socket.write(buildFrame("", OPCODE.PONG));
+    console.log("ping");
+    return;
+  }
+
+  console.log("알 수 없는 opcode:", frame.opcode);
+}
 
 server.listen(3000, () => console.log("http://localhost:3000"));
 
