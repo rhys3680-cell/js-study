@@ -34,6 +34,35 @@ async function handleApi(req, res, url) {
     return sendJson(res, 200, todos);
   }
 
+  const match = url.pathname.match(/^\/api\/todos\/(\d+)$/);
+
+  if (match && req.method === "PATCH") {
+    const id = Number(match[1]);
+    const todo = todos.find((t) => t.id === id);
+
+    if (!todo) {
+      return sendJson(res, 404, { error: "없는 항목입니다." });
+    }
+
+    const body = await readBody(req);
+
+    let data;
+
+    try {
+      data = JSON.parse(body);
+    } catch {
+      return sendJson(res, 400, { error: "잘못된 JSON입니다." });
+    }
+
+    if (typeof data.done !== "boolean") {
+      return sendJson(res, 400, { error: "done은 boolean이어야 합니다." });
+    }
+
+    todo.done = data.done;
+
+    return sendJson(res, 200, todo);
+  }
+
   if (req.method === "POST" && url.pathname === "/api/todos") {
     const body = await readBody(req);
 

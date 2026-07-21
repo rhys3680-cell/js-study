@@ -39,6 +39,21 @@ async function createTodo(text) {
   return res.json();
 }
 
+async function toggleTodo(id, done) {
+  const res = await fetch(`/api/todos/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ done }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error ?? `요청 실패: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 // --- 렌더 ---
 function render() {
   if (state.status === "loading") {
@@ -101,6 +116,23 @@ form.addEventListener("submit", async (e) => {
     setState({ todos: [...state.todos, todo] });
   } catch (err) {
     alert(err.message); // TODO: 동작 확인 후 개선
+  }
+});
+
+root.addEventListener("click", async (e) => {
+  const item = e.target.closest(".item");
+  if (!item) return;
+
+  const id = Number(item.dataset.id);
+  const todo = state.todos.find((t) => t.id === id);
+
+  try {
+    const updated = await toggleTodo(id, !todo.done);
+    setState({
+      todos: state.todos.map((t) => (t.id === id ? updated : t)),
+    });
+  } catch (err) {
+    alert(err.message);
   }
 });
 
